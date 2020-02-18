@@ -1,3 +1,5 @@
+# File to perform PCA on the data
+
 from sklearn.preprocessing import scale
 from sklearn import decomposition
 import numpy as np

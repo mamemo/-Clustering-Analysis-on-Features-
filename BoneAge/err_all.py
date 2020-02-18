@@ -1,3 +1,5 @@
+# Error calculation for all the data.
+
 import numpy as np
 from math import sqrt
 from sklearn import metrics

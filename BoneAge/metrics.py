@@ -1,3 +1,5 @@
+# Files with several clustering metrics definitions.
+
 from sklearn import metrics
 from time import time
 import numpy as np

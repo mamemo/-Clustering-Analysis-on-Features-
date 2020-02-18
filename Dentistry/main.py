@@ -1,3 +1,5 @@
+# Entry file
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -9,6 +11,8 @@ from known_points import obtain_known_points
 from metrics import acc_all as acc_per_cluster
 from acc_all import run as average_cluster
 
+
+# Function to manage the order of clusters over several runs
 def reset_cluster_labels(acc, n_clusters = 4):
     dic = {} # Key: Running label Value: Real label
     sort_acc = sorted(acc)[::-1]
@@ -19,23 +23,26 @@ def reset_cluster_labels(acc, n_clusters = 4):
         return False, False
     return dic, sort_acc
 
+# Function to calculate the euclidean distance between two points
 def euclidean_distance(a, b):
     return np.linalg.norm(a-b)
 
+# Runs clustering analysis over a dataset
 def run(filename, folder="./Data/"):
     times_run = 10
     n_clusters = 4
 
     # Read the data
     print("\nReading data...")
+    # Gets the components to cluster
     data_original = pd.read_csv(folder+ 'pca_' + filename)
     data_info_original = pd.read_csv(folder+filename)
 
+    # Get training info (id, prediction, label, phase(train/test))
     data_summary = pd.concat([data_original, data_info_original[['img_ids', 'predictions','labels', 'phase']]], axis=1)
     amount_features = len(data_original.columns)
-    # print("Discovering identification points...")
-    # known_points = obtain_known_points(data_original, data_info_original, times_run, n_clusters)
 
+    # Accumulators
     acc_per_clusters_test = []
     acc_all_test = []
     cluster_size_all = []
@@ -43,9 +50,11 @@ def run(filename, folder="./Data/"):
     distance_closest_all = []
     distance_points_centroid_all = []
 
+    # Runs clustering algo several times
     while times_run > 0:
         print("\nTraining cluster...")
 
+        # Prepare data to train
         indices = np.random.permutation(len(data_original))
         data = data_original.iloc[indices]
         data_info = data_info_original.iloc[indices]
@@ -58,6 +67,7 @@ def run(filename, folder="./Data/"):
         data_info_test = data_info[data_info['phase']=='val']
 
         # Fuzzy K Means
+        # Training
         clusterer = K_fuzzy(k = n_clusters)
         clusterer.train(data_train)
         pred_train = clusterer.test(data_train)
@@ -65,16 +75,18 @@ def run(filename, folder="./Data/"):
         # print(acc_per_cluster(data_info_train, pred_train, 4))
         # print(average_cluster(data_info_train))
 
+        # Testing
         pred_test = clusterer.test(data_test)
         accuracies = acc_per_cluster(data_info_test, pred_test, n_clusters)
 
         # print(average_cluster(data_info_test))
 
+        # Controls the cluster predictions
         label_dic, new_accuracies = reset_cluster_labels(accuracies)
-
         if label_dic:
             times_run -= 1
-
+            
+            # Rearrange cluster predictions
             new_pred_train = [label_dic[pred] for pred in pred_train]
             new_pred_test = [label_dic[pred] for pred in pred_test]
 
@@ -86,6 +98,8 @@ def run(filename, folder="./Data/"):
 
             print("Cluster trained...")
 
+            # Distances to observe the changes of the clusters
+
             print("Calculating accuracies...")
             acc_per_clusters_test.append(new_accuracies)
             acc_all_test.append(average_cluster(data_info_test))
@@ -96,7 +110,7 @@ def run(filename, folder="./Data/"):
             for n in range(n_clusters):
                 clusters.append(data_summary[data_summary['cluster'+str(times_run)]==n])
 
-            # Calculate centroids and
+            # Calculate centroids and get the data points
             centroids = []
             features = []
             cluster_size = []
@@ -113,8 +127,6 @@ def run(filename, folder="./Data/"):
             # Calculate centroid distance
             distance_centroid_all.append([[euclidean_distance(centroid_x, centroid_y) for centroid_y in centroids] for centroid_x in centroids])
             # print(distance_centroid_all)
-            # exit()
-
 
             print("Calculating point distances...")
             distance_closest = []
@@ -144,6 +156,7 @@ def run(filename, folder="./Data/"):
             distance_closest_all.append(distance_closest)
             distance_points_centroid_all.append(distance_points_centroid)
 
+    # Average the distances over all the runs
     acc_all_test = np.array(acc_all_test).mean()
     acc_per_clusters_test = np.array(acc_per_clusters_test).mean(axis=0)
     cluster_size_all = np.array(cluster_size_all).mean(axis=0)
@@ -168,15 +181,19 @@ def run(filename, folder="./Data/"):
     return (acc_all_test, acc_per_clusters_test, cluster_size_all, distance_centroid_all, distance_closest_all, distance_points_centroid_all)
 
 
+# Runs the Clustering Algo over different sample sizes and using K-fold
 def main():
     k_fold = 4
     plt.figure()
     plt.title('Accuracies Reducing Whole Dataset')
     all_acurracies = []
     sample_sizes = [100,300,1464,2928]
+    
+    # For every sample size do:
     for sample, sample_size in zip([100, 300, "half", "all"],sample_sizes):
         print("\n\nSample Size {}".format(sample))
 
+        # Accumulators
         acc_all_test_files = []
         acc_per_clusters_test_files = []
         cluster_size_all_files = []
@@ -184,6 +201,7 @@ def main():
         distance_closest_all_files = []
         distance_points_centroid_all_files = []
 
+        # For every fold do pca and run the training
         for i in range(k_fold):
             print("\nFile {}".format(i+1))
             filename = 'teeth_features_'+str(sample)+'_red_whole_fold_'+str(i)+'.csv'
@@ -196,6 +214,7 @@ def main():
             distance_closest_all_files.append(file_results[4])
             distance_points_centroid_all_files.append(file_results[5])
 
+        # Average the distances over all the folds
         acc_all_test_files = np.array(acc_all_test_files).mean()
         acc_per_clusters_test_files = np.array(acc_per_clusters_test_files).mean(axis=0)
         cluster_size_all_files = np.array(cluster_size_all_files).mean(axis=0)
@@ -226,22 +245,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# def reset_cluster_labels(pred_train, data_info_train, known_points):
-#     redef = {}
-#     counts = []
-#     for points in known_points:
-#         c = []
-#         for idx_cluster in range(len(known_points)):
-#             c.append(len(set(points)&set(data_info_train[pred_train==idx_cluster]["img_ids"].values)))
-#         counts.append(c)
-
-#     for idx_c, c in enumerate(counts):
-#         idx = c.index(max(c))
-#         if idx in redef.keys():
-#             return False
-#         else:
-#             redef[idx]=idx_c
-
-#     return redef

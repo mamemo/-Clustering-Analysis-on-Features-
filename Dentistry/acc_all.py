@@ -1,3 +1,5 @@
+# Accuracy calculation for all the data.
+
 import numpy as np
 
 def run(data_info):
